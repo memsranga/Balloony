@@ -1,7 +1,21 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<ContentPage xmlns="http://xamarin.com/schemas/2014/forms" xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml" xmlns:d="http://xamarin.com/schemas/2014/forms/design" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="d" x:Class="Balloony.MainPage">
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage x:Class="Balloony.MainPage"
+             xmlns="http://xamarin.com/schemas/2014/forms"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:d="http://xamarin.com/schemas/2014/forms/design"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:local="clr-namespace:Balloony"
+             xmlns:skia="clr-namespace:SkiaSharp.Views.Forms;assembly=SkiaSharp.Views.Forms"
+             mc:Ignorable="d">
     <StackLayout>
-        <!-- Place new controls here -->
-        <Label Text="Welcome to Xamarin.Forms!" HorizontalOptions="Center" VerticalOptions="CenterAndExpand" />
+        <Slider HeightRequest="200" />
+        <Grid HeightRequest="200" BackgroundColor="Yellow">
+            <skia:SKCanvasView x:Name="balloon_slider"
+                               PaintSurface="Handle_PaintSurface" />
+            <Grid.Effects>
+                <local:TouchEffect TouchAction="Handle_TouchAction" />
+            </Grid.Effects>
+        </Grid>
+        <BoxView HeightRequest="200" BackgroundColor="Blue" />
     </StackLayout>
 </ContentPage>
