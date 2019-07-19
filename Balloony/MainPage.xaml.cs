@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -8,6 +9,9 @@ using SkiaSharp;
 using SkiaSharp.Views.Forms;
 using Xamarin.Forms;
 using static Balloony.TouchEffect;
+using SKSvg = SkiaSharp.Extended.Svg.SKSvg;
+using System.IO;
+using System.Reflection;
 
 namespace Balloony
 {
@@ -19,22 +23,68 @@ namespace Balloony
         public MainPage()
         {
             InitializeComponent();
+
+            SliderSelectedPaint = new SKPaint
+            {
+                Color = Color.FromHex("#6844bf").ToSKColor(),
+                IsAntialias = true,
+                Style = SKPaintStyle.Fill,
+                StrokeWidth = SliderHeight
+            };
+
+            SliderUnSelectedPaint = new SKPaint
+            {
+                Color = Color.FromHex("#f8f8f8").ToSKColor(),
+                IsAntialias = true,
+                Style = SKPaintStyle.Stroke,
+                StrokeWidth = SliderHeight
+            };
+
+            ThumbPaint = new SKPaint
+            {
+                Color = Color.FromHex("#6844bf").ToSKColor(),
+                IsAntialias = true,
+                Style = SKPaintStyle.Fill
+            };
+            ThumbSelectedPaint = new SKPaint
+            {
+                Color = Color.FromHex("#6844bf").ToSKColor(),
+                IsAntialias = true,
+                Style = SKPaintStyle.Stroke,
+                StrokeWidth = SelectedThumbThickness
+            };
+            ThumbSelectedSubtractPaint = new SKPaint
+            {
+                Color = Color.Transparent.ToSKColor(),
+                IsAntialias = true,
+                Style = SKPaintStyle.Fill,
+                StrokeWidth = 0,
+                BlendMode = SKBlendMode.Src
+            };
+            ThumbSubtractPaint = new SKPaint
+            {
+                Color = Color.Transparent.ToSKColor(),
+                IsAntialias = true,
+                Style = SKPaintStyle.Fill,
+                StrokeWidth = 0,
+                BlendMode = SKBlendMode.Src
+            };
+            balloon = new SKSvg();
+            balloon.Load(Resolve("resource://Balloony.Resources.balloon.svg"));
         }
 
-        SKPaint sliderSelectedPaint = new SKPaint
-        {
-            Color = Color.FromHex("#6844bf").ToSKColor(),
-            IsAntialias = true,
-            Style = SKPaintStyle.Stroke,
-            StrokeWidth = 5
-        };
-        SKPaint sliderUnSelectedPaint = new SKPaint
-        {
-            Color = Color.FromHex("#f8f8f8").ToSKColor(),
-            IsAntialias = true,
-            Style = SKPaintStyle.Stroke,
-            StrokeWidth = 5
-        };
+        SKSvg balloon;
+        float SliderHeight = 5;
+        float SelectedThumbThickness = 10;
+        float ThumbSize = 50;
+        SKPaint SliderSelectedPaint { get; set; }
+        SKPaint SliderUnSelectedPaint { get; set; }
+        SKPaint ThumbPaint { get; set; }
+        SKPaint ThumbSubtractPaint { get; set; }
+        SKPaint ThumbSelectedPaint { get; set; }
+        SKPaint ThumbSelectedSubtractPaint { get; set; }
+
+
 
         private float _percent;
 
@@ -57,46 +107,46 @@ namespace Balloony
 
             var sliderThumbX = (float)(info.Width * Percent / 100);
             var sliderY = info.Height - 50;
-            canvas.DrawLine(0, sliderY, sliderThumbX, sliderY, sliderSelectedPaint);
-            canvas.DrawLine(sliderThumbX, sliderY, info.Width, sliderY, sliderUnSelectedPaint);
-
-            if (_touchType == TouchActionType.Pressed || _touchType == TouchActionType.Moved)
-            {
-                DrawSelectedThumb(canvas, sliderThumbX, sliderY);
-            }
-            else
-            {
-                DrawUnSelectedThumb(canvas, sliderThumbX, sliderY);
-            }
+            DrawSlider(canvas, info, Percent);
+            DrawThumb(canvas, info, Percent, _touchType);
+            DrawBalloon(canvas, info, Percent);
         }
 
-        private void DrawUnSelectedThumb(SKCanvas canvas, float sliderThumbX, int sliderY)
+        private void DrawThumb(SKCanvas canvas, SKImageInfo info, float percent, TouchActionType touchActionType)
         {
-            using (var circlePaint = new SKPaint())
+            var y = info.Height - ThumbSize - SelectedThumbThickness;
+            var center = info.Width * percent / 100;
+
+            if (touchActionType == TouchActionType.Pressed || touchActionType == TouchActionType.Moved)
             {
-                circlePaint.Color = Color.FromHex("#6844bf").ToSKColor();
-                circlePaint.IsAntialias = true;
-                circlePaint.Style = SKPaintStyle.Fill;
-                canvas.DrawRoundRect(sliderThumbX - 25, sliderY - 25, 50, 50, 10, 10, circlePaint);
-                circlePaint.Color = Color.White.ToSKColor();
-                circlePaint.Style = SKPaintStyle.Fill;
-                canvas.DrawRect(sliderThumbX - 10, sliderY - 10, 20, 20, circlePaint);
+                // selected thumb
+                var radius = ThumbSize * 0.5f; // 50% of size
+                canvas.DrawCircle(center, y, radius, ThumbSelectedPaint);
+                canvas.DrawCircle(center, y, radius, ThumbSelectedSubtractPaint);
+                return;
             }
+
+            //default thumb
+            var startX = center - ThumbSize / 2;
+            var startY = y - ThumbSize / 2;
+            var cornerRadius = ThumbSize * 0.4f; // 40% of size
+            var innerRadius = ThumbSize / 2 * .5f; // 50 % of side
+            canvas.DrawRoundRect(startX, startY, ThumbSize, ThumbSize, cornerRadius, cornerRadius, ThumbPaint);
+            canvas.DrawCircle(center, y, innerRadius, ThumbSubtractPaint);
         }
 
-        private void DrawSelectedThumb(SKCanvas canvas, float sliderThumbX, float sliderY)
+        private void DrawBalloon(SKCanvas canvas, SKImageInfo info, float percent)
         {
-            using (var circlePaint = new SKPaint())
-            {
-                circlePaint.Color = Color.FromHex("#6844bf").ToSKColor();
-                circlePaint.IsAntialias = true;
-                circlePaint.Style = SKPaintStyle.Stroke;
-                circlePaint.StrokeWidth = 10;
-                canvas.DrawCircle(new SKPoint(sliderThumbX - 10, sliderY), 20, circlePaint);
-                circlePaint.Color = Color.White.ToSKColor();
-                circlePaint.Style = SKPaintStyle.Fill;
-                canvas.DrawCircle(new SKPoint(sliderThumbX - 10, sliderY), 20, circlePaint);
-            }
+            var y = info.Height - ThumbSize - SelectedThumbThickness;
+            var center = info.Width * percent / 100;
+            var picture = balloon.Picture;
+            var scale = 2;
+            var balloonCenter = center - (scale * picture.CullRect.Width / 2);
+            var balloonY = y - (scale * picture.CullRect.Height) - 50;
+
+            var matrix = new SKMatrix();
+            matrix.SetScaleTranslate(scale, scale, balloonCenter, balloonY);
+            canvas.DrawPicture(balloon.Picture, ref matrix);
         }
 
         private TouchActionType _touchType;
@@ -105,5 +155,46 @@ namespace Balloony
             _touchType = args.Type;
             Percent = (float)((args.Location.X / balloon_slider.Width) * 100);
         }
+
+
+
+        // Bindable Property - Selected Color - better naming
+        // Bindable Property - UnSelected Color - better naming
+        private void DrawSlider(SKCanvas canvas, SKImageInfo info, float percent)
+        {
+            var y = info.Height - ThumbSize - SelectedThumbThickness; // minus the thumb radius, minus thumb thickness
+            var selectX = info.Width * percent / 100;
+            canvas.DrawLine(0, y, selectX, y, SliderSelectedPaint);
+            canvas.DrawLine(selectX, y, info.Width, y, SliderUnSelectedPaint);
+        }
+
+        private Stream Resolve(string identifier)
+        {
+            if (!identifier.StartsWith("resource://", StringComparison.OrdinalIgnoreCase))
+                throw new Exception("Only resource:// scheme is supported");
+
+
+            var uri = new Uri(identifier);
+            Assembly assembly = null;
+
+            var parts = uri.OriginalString.Substring(11).Split('?');
+            var resourceName = parts.First();
+
+            if (parts.Count() > 1)
+            {
+                var name = Uri.UnescapeDataString(uri.Query.Substring(10));
+                var assemblyName = new AssemblyName(name);
+                assembly = Assembly.Load(assemblyName);
+            }
+
+            if (assembly == null)
+            {
+                var callingAssemblyMethod = typeof(Assembly).GetTypeInfo().GetDeclaredMethod("GetCallingAssembly");
+                assembly = (Assembly)callingAssemblyMethod.Invoke(null, new object[0]);
+            }
+
+            return assembly.GetManifestResourceStream(resourceName);
+        }
+
     }
 }
