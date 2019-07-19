@@ -9,7 +9,6 @@ using SkiaSharp;
 using SkiaSharp.Views.Forms;
 using Xamarin.Forms;
 using static Balloony.TouchEffect;
-using SKSvg = SkiaSharp.Extended.Svg.SKSvg;
 using System.IO;
 using System.Reflection;
 
@@ -69,11 +68,10 @@ namespace Balloony
                 StrokeWidth = 0,
                 BlendMode = SKBlendMode.Src
             };
-            balloon = new SKSvg();
-            balloon.Load(Resolve("resource://Balloony.Resources.balloon.svg"));
+
+            Percent = 50;
         }
 
-        SKSvg balloon;
         float SliderHeight = 5;
         float SelectedThumbThickness = 10;
         float ThumbSize = 50;
@@ -84,8 +82,6 @@ namespace Balloony
         SKPaint ThumbSelectedPaint { get; set; }
         SKPaint ThumbSelectedSubtractPaint { get; set; }
 
-
-
         private float _percent;
 
         public float Percent
@@ -95,10 +91,20 @@ namespace Balloony
             {
                 _percent = value;
                 balloon_slider.InvalidateSurface();
+                TranslateBalloon(Percent);
             }
         }
 
-        void Handle_PaintSurface(object sender, SkiaSharp.Views.Forms.SKPaintSurfaceEventArgs e)
+        protected override void OnSizeAllocated(double width, double height)
+        {
+            base.OnSizeAllocated(width, height);
+            balloonSvg.AnchorY = 1;
+            balloonSvg.TranslationX = (balloon_slider.Width * Percent / 100) - balloonSvg.Width / 2;
+            balloonSvg.Scale = 0;
+            balloonSvg.TranslationY = balloon_slider.Height - balloonSvg.Height;
+        }
+
+        void Handle_Slider_PaintSurface(object sender, SkiaSharp.Views.Forms.SKPaintSurfaceEventArgs e)
         {
             var info = e.Info;
             var canvas = e.Surface.Canvas;
@@ -109,7 +115,64 @@ namespace Balloony
             var sliderY = info.Height - 50;
             DrawSlider(canvas, info, Percent);
             DrawThumb(canvas, info, Percent, _touchType);
-            DrawBalloon(canvas, info, Percent);
+        }
+
+        private void TranslateBalloon(float percent)
+        {
+            if (this.AnimationIsRunning("TranslationAnimation"))
+            {
+                // this.AbortAnimation("TranslationAnimation");
+                return;
+            }
+
+            var oldX = balloonSvg.TranslationX;
+            var newX = balloon_slider.Width * percent / 100 - balloonSvg.Width / 2;
+
+
+            // increase angle based on delta
+            var translation = new Animation();
+            translation.Add(0, 1, new Animation((s) =>
+            {
+                // Debug.WriteLine("new translation: " + oldX + s * Math.Abs(oldX - newX));
+
+                if (oldX > newX)
+                {
+                    var delta = oldX - s * Math.Abs(oldX - newX);// balloon_slider.Width * percent / 100;;
+                    balloonSvg.TranslationX = delta;
+                    var angle = Math.Abs(oldX - newX) > 0.001 ? Math.Tanh(delta) : 0;
+                    Debug.WriteLine("angle: " + angle);// s * delta);
+                    balloonSvg.Rotation = s * angle * 45;// s * delta;
+                }
+                else
+                {
+                    var delta = oldX + s * Math.Abs(oldX - newX);// balloon_slider.Width * percent / 100;
+
+                    balloonSvg.TranslationX = delta;
+                    var angle = Math.Abs(oldX - newX) > 0.001 ? Math.Tanh(delta) : 0;
+                    Debug.WriteLine("angle: " + angle);// - s * delta);
+                    balloonSvg.Rotation = (1 - s) * angle * 45;// - s * delta;
+                    // baloonSvg.Rotation = (1 - s) * 45;
+                }
+            }, 0, 1));
+            translation.Add(0, 1, new Animation(s =>
+            {
+                if (oldX > newX)
+                {
+                    var delta = oldX - s * Math.Abs(oldX - newX);
+                    var angle = Math.Abs(oldX - newX) > 0.001 ? Math.Tanh(delta) : 0;
+                    balloonSvg.Rotation = s * angle * 45;
+                }
+                else
+                {
+                    var delta = oldX + s * Math.Abs(oldX - newX);
+                    var angle = Math.Abs(oldX - newX) > 0.001 ? Math.Tanh(-delta) : 0;
+                    balloonSvg.Rotation = s * angle * 45;
+                }
+            }, 0, 1, finished: () =>
+            {
+                balloonSvg.RelRotateTo(-balloonSvg.Rotation, 1000);
+            }));
+            translation.Commit(balloonSvg, "TranslationAnimation", length: 100);
         }
 
         private void DrawThumb(SKCanvas canvas, SKImageInfo info, float percent, TouchActionType touchActionType)
@@ -135,24 +198,33 @@ namespace Balloony
             canvas.DrawCircle(center, y, innerRadius, ThumbSubtractPaint);
         }
 
-        private void DrawBalloon(SKCanvas canvas, SKImageInfo info, float percent)
-        {
-            var y = info.Height - ThumbSize - SelectedThumbThickness;
-            var center = info.Width * percent / 100;
-            var picture = balloon.Picture;
-            var scale = 2;
-            var balloonCenter = center - (scale * picture.CullRect.Width / 2);
-            var balloonY = y - (scale * picture.CullRect.Height) - 50;
-
-            var matrix = new SKMatrix();
-            matrix.SetScaleTranslate(scale, scale, balloonCenter, balloonY);
-            canvas.DrawPicture(balloon.Picture, ref matrix);
-        }
-
         private TouchActionType _touchType;
+        private bool isMoving;
+
         void Handle_TouchAction(object sender, Balloony.TouchEffect.TouchActionEventArgs args)
         {
             _touchType = args.Type;
+            if (_touchType == TouchActionType.Pressed || _touchType == TouchActionType.Entered)
+            {
+                // isMoving = true;
+                var floatAnimation = new Animation();
+                floatAnimation.Add(0, 1, new Animation((s) =>
+                {
+                    balloonSvg.Scale = s;
+                    balloonSvg.TranslationY = (balloon_slider.Height - balloonSvg.Height) - s * 100;
+                }, 0, 1));
+                floatAnimation.Commit(balloonSvg, "FloatAnimation");
+            }
+            else if (_touchType == TouchActionType.Released || _touchType == TouchActionType.Exited)
+            {
+                var dropAnimation = new Animation();
+                dropAnimation.Add(0, 1, new Animation((s) =>
+                {
+                    balloonSvg.Scale = s;
+                    balloonSvg.TranslationY = (balloon_slider.Height - balloonSvg.Height) - s * 100;
+                }, 1, 0));
+                dropAnimation.Commit(balloonSvg, "DropAnimation");
+            }
             Percent = (float)((args.Location.X / balloon_slider.Width) * 100);
         }
 
@@ -167,34 +239,5 @@ namespace Balloony
             canvas.DrawLine(0, y, selectX, y, SliderSelectedPaint);
             canvas.DrawLine(selectX, y, info.Width, y, SliderUnSelectedPaint);
         }
-
-        private Stream Resolve(string identifier)
-        {
-            if (!identifier.StartsWith("resource://", StringComparison.OrdinalIgnoreCase))
-                throw new Exception("Only resource:// scheme is supported");
-
-
-            var uri = new Uri(identifier);
-            Assembly assembly = null;
-
-            var parts = uri.OriginalString.Substring(11).Split('?');
-            var resourceName = parts.First();
-
-            if (parts.Count() > 1)
-            {
-                var name = Uri.UnescapeDataString(uri.Query.Substring(10));
-                var assemblyName = new AssemblyName(name);
-                assembly = Assembly.Load(assemblyName);
-            }
-
-            if (assembly == null)
-            {
-                var callingAssemblyMethod = typeof(Assembly).GetTypeInfo().GetDeclaredMethod("GetCallingAssembly");
-                assembly = (Assembly)callingAssemblyMethod.Invoke(null, new object[0]);
-            }
-
-            return assembly.GetManifestResourceStream(resourceName);
-        }
-
     }
 }

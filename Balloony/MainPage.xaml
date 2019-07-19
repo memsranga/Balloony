@@ -3,14 +3,21 @@
              xmlns="http://xamarin.com/schemas/2014/forms"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:d="http://xamarin.com/schemas/2014/forms/design"
+             xmlns:ffimageloadingsvg="clr-namespace:FFImageLoading.Svg.Forms;assembly=FFImageLoading.Svg.Forms"
              xmlns:local="clr-namespace:Balloony"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:skia="clr-namespace:SkiaSharp.Views.Forms;assembly=SkiaSharp.Views.Forms"
              mc:Ignorable="d">
     <StackLayout>
         <Slider HeightRequest="200" />
-        <Grid HeightRequest="200" BackgroundColor="Yellow">
-            <skia:SKCanvasView x:Name="balloon_slider" PaintSurface="Handle_PaintSurface" />
+        <Grid HeightRequest="200" BackgroundColor="White">
+            <skia:SKCanvasView x:Name="balloon_slider" PaintSurface="Handle_Slider_PaintSurface" />
+            <ffimageloadingsvg:SvgCachedImage x:Name="balloonSvg"
+                                              HeightRequest="150"
+                                              BackgroundColor="Yellow"
+                                              Source="resource://Balloony.Resources.balloon.svg"
+                                              HorizontalOptions="Start"
+                                              VerticalOptions="Start" />
             <Grid.Effects>
                 <local:TouchEffect TouchAction="Handle_TouchAction" />
             </Grid.Effects>
