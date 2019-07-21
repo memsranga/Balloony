@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using SkiaSharp;
 using SkiaSharp.Views.Forms;
 using Xamarin.Forms;
@@ -70,7 +71,8 @@ namespace Balloony
         SKPaint ThumbSubtractPaint { get; set; }
         SKPaint ThumbSelectedPaint { get; set; }
         SKPaint ThumbSelectedSubtractPaint { get; set; }
-
+        private TouchActionType _touchType;
+        private double _width;
         private float _percent;
 
         public float Percent
@@ -87,10 +89,16 @@ namespace Balloony
         protected override void OnSizeAllocated(double width, double height)
         {
             base.OnSizeAllocated(width, height);
-            balloonSvg.AnchorY = 1;
-            balloonSvg.TranslationX = (balloon_slider.Width * Percent / 100) - balloonSvg.Width / 2;
-            balloonSvg.Scale = 0;
-            balloonSvg.TranslationY = balloon_slider.Height - balloonSvg.Height;
+
+            // only calling when orientation changes
+            if (Math.Abs(width - _width) > 0.01)
+            {
+                _width = width;
+                balloonSvg.AnchorY = 1;
+                balloonSvg.TranslationX = (balloon_slider.Width * Percent / 100) - balloonSvg.Width / 2;
+                balloonSvg.Scale = 0;
+                balloonSvg.TranslationY = balloon_slider.Height - balloonSvg.Height;
+            }
         }
 
         void Handle_Slider_PaintSurface(object sender, SkiaSharp.Views.Forms.SKPaintSurfaceEventArgs e)
@@ -113,7 +121,7 @@ namespace Balloony
 
             var oldX = balloonSvg.TranslationX;
             var newX = balloon_slider.Width * percent / 100 - balloonSvg.Width / 2;
-
+            balloonSvg.Text = Math.Floor(Percent).ToString();
 
             var translation = new Animation();
             translation.Add(0, 1, new Animation((s) =>
@@ -173,18 +181,16 @@ namespace Balloony
             canvas.DrawCircle(center, y, innerRadius, ThumbSubtractPaint);
         }
 
-        private TouchActionType _touchType;
-
-        void Handle_TouchAction(object sender, Balloony.TouchEffect.TouchActionEventArgs args)
+        private void Handle_TouchAction(object sender, Balloony.TouchEffect.TouchActionEventArgs args)
         {
             _touchType = args.Type;
-            if(this.AnimationIsRunning("FloatAnimation") || this.AnimationIsRunning("DropAnimation"))
+            if (this.AnimationIsRunning("FloatAnimation") || this.AnimationIsRunning("DropAnimation"))
             {
                 return;
             }
-
             if (_touchType == TouchActionType.Pressed || _touchType == TouchActionType.Entered)
             {
+                Debug.WriteLine("entered");
                 var floatAnimation = new Animation();
                 floatAnimation.Add(0, 1, new Animation((s) =>
                 {

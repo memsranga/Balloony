@@ -8,15 +8,10 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:skia="clr-namespace:SkiaSharp.Views.Forms;assembly=SkiaSharp.Views.Forms"
              mc:Ignorable="d">
-    <StackLayout>
-        <Slider HeightRequest="200" />
+    <StackLayout VerticalOptions="Center">
         <Grid HeightRequest="200" BackgroundColor="White">
             <skia:SKCanvasView x:Name="balloon_slider" PaintSurface="Handle_Slider_PaintSurface" />
-            <ffimageloadingsvg:SvgCachedImage x:Name="balloonSvg"
-                                              HeightRequest="150"
-                                              Source="resource://Balloony.Resources.balloon.svg"
-                                              HorizontalOptions="Start"
-                                              VerticalOptions="Start" />
+            <local:BalloonView x:Name="balloonSvg" />
             <Grid.Effects>
                 <local:TouchEffect TouchAction="Handle_TouchAction" />
             </Grid.Effects>
