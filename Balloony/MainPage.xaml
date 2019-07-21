@@ -14,7 +14,6 @@
             <skia:SKCanvasView x:Name="balloon_slider" PaintSurface="Handle_Slider_PaintSurface" />
             <ffimageloadingsvg:SvgCachedImage x:Name="balloonSvg"
                                               HeightRequest="150"
-                                              BackgroundColor="Yellow"
                                               Source="resource://Balloony.Resources.balloon.svg"
                                               HorizontalOptions="Start"
                                               VerticalOptions="Start" />
